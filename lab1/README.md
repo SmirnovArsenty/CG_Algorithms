@@ -100,6 +100,80 @@
 Вам предлагается разработать клон игры Хаммурапи – Правитель Египта. Игра должна представлять собой консольное приложение, осуществляющее ввод/вывод при помощи \<iostream\>. Игра должна давать пользователю возможность прерваться (выйти из игры) в начале каждого раунда и автоматически сохранить прогресс в файле. При повторном запуске игры, если имеется сохраненный прогресс, игра должна спросить надо ли продолжить предыдущую игру или начать игру заново. Для работы с файлами используйте библиотеку \<fstream\>. Вы можете расширить экономическую модель игры, и ввести дополнительные параметры, однако их количество не должно превышать 5.
 
 ## Как реализовано
-<brief/>
+### Реализованы три класса:
+
+    * City
+        содержит в себе описание состояние города в каждом раунде игры
+    * GameStats
+        содержит в себе статистику игры для вывода сообщения после прохождения 10 раунда
+    * GameInstance
+        основной класс игры, реализует логику перехода от одного состояния City к другому
+
+### Для большего удобвста переопределены следующие типы:
+```
+typedef int32_t Citizen_t;
+typedef float Bushel_t;
+typedef int32_t Acre_t;
+typedef uint32_t Index_t;
+```
+
+### Численные параметры игры
+вынесены в константы и объявлены в начале неймспейса игры
+```
+#define SET_VALUE_MIN_MAX(type, value, min, max) \
+    constexpr type g_##value##_min = min;        \
+    constexpr type g_##value##_max = max;
+
+constexpr Index_t g_round_count = 10;
+SET_VALUE_MIN_MAX(Bushel_t, acre_price, 17.f, 26.f)
+SET_VALUE_MIN_MAX(Bushel_t, wheat_per_acre, 1.f, 6.f)
+SET_VALUE_MIN_MAX(Bushel_t, rats_ate_percent, 0.f, .07f)
+constexpr Bushel_t g_citizen_bushel_needs = 20.f; // each citizen need <g_citizen_bushel_needs> bushel per year
+constexpr int32_t g_citizen_can_work_on_acres = 10; // maximum acres citizen can work on
+constexpr Bushel_t g_acre_need_to_sow = 0.5f; // each acre need <g_acre_need_to_sow> bushels per year
+constexpr float g_citizens_dead_to_game_over_percent = 0.45f;
+constexpr float g_plugue_probability = 0.15f;
+```
+макрос SET_VALUE_MIN_MAX позволяет определять промежуток для случайных значений
+
+отдельно вынесена константная строка, хранящая в себе имя файла сохранения
+```
+constexpr char* g_save_file_name = "save.txt";
+```
 
 ## Вывод программы
+
+```
+Do you want to leave the game? (Y/N)n
+I beg to report to you:
+In year 4
+The city population is now 112
+The city now owns 1150 acres.
+We harvested 5866.68 bushels of wheat, 5.23811 bushels per acre
+Rats ate 105.045 bushels
+Now you have 6680.05 bushels in barns
+1 acre of land is now worth 18.6502 bushels
+What do you wish, lord?
+How many acres of land do you command to buy? (0 to ask for sell) 100
+How many bushels of wheat do you command to eat? 2300
+How many acres of land do you command to sow? 1000
+Do you want to leave the game? (Y/N)n
+I beg to report to you:
+In year 5
+20 people came to the city
+The city population is now 112
+The city now owns 1250 acres.
+We harvested 1340.74 bushels of wheat, 1.34074 bushels per acre
+Rats ate 178.047 bushels
+Now you have 3177.72 bushels in barns
+1 acre of land is now worth 21.9761 bushels
+What do you wish, lord?
+How many acres of land do you command to buy? (0 to ask for sell) 10000
+How many bushels of wheat do you command to eat? 200000
+How many acres of land do you command to sow? 10000
+You are out of wheat in barns
+Unable to apply your inputs for current city
+What do you wish, lord?
+How many acres of land do you command to buy? (0 to ask for sell)
+
+```
