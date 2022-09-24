@@ -8,19 +8,65 @@ class Array final {
     constexpr static uint32_t capacity_scale_{ 2 };
 public:
     class Iterator final {
+        T* cur_{ nullptr };
+        T* begin_{ nullptr }; // if begin_ greater than end_, it is reverse iterator
+        T* end_{ nullptr };
     public:
-        const T& get() const;
-        void set(const T& value);
-        void next();
-        bool has_next() const;
+        Iterator(T* begin, T* end)
+            : begin_{ begin }
+            , end_{ end }
+        {
+            cur_ = begin_;
+        }
+        const T& get() const
+        {
+            return *cur_;
+        }
+        void set(const T& value)
+        {
+            *cur_ = value;
+        }
+        void next()
+        {
+            begin_ < end_ ? ++cur_ : --cur_;
+        }
+        bool has_next() const {
+            return begin_ < end_ ? cur_ < end_ : cur_ > end_;
+        }
 
-        T& operator*();
-        const T& operator*() const;
+        T& operator*() { return *cur_; }
+        const T& operator*() const { return *cur_; }
+
+        Iterator& operator++() // prefix ++
+        {
+            next();
+            return *this;
+        }
+        Iterator operator++(int) // postfix ++
+        {
+            Iterator ret = *this;
+            next();
+            return ret;
+        }
+
+        Iterator& operator--() // prefix --
+        {
+            begin_ < end_ ? --cur_ : ++cur_;
+            return *this;
+        }
+        Iterator operator--(int) // postfix --
+        {
+            Iterator ret = *this;
+            begin_ < end_ ? --cur_ : ++cur_;
+            return ret;
+        }
     };
 
-    using const Iterator ConstIterator;
+    Array() :
+    
+    {
 
-    Array();
+    }
     Array(uint32_t capacity);
     ~Array();
 
@@ -48,8 +94,6 @@ public:
     Iterator end();
     ConstIterator cend() const;
 };
-
-// Iterator implementation
 
 int main() {
     Array<int16_t> a;
