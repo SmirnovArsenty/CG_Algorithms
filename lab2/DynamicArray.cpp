@@ -2,6 +2,9 @@
 #include <iostream>
 #include <string>
 
+#include <cppunit/config/SourcePrefix.h>
+#include <cppunit/extensions/HelperMacros.h>
+
 void debug_log(const std::string& msg)
 {
 #ifndef _NDEBUG
@@ -228,3 +231,35 @@ int main() {
 
     return EXIT_SUCCESS;
 }
+
+class DynamicArrayTest : public CPPUNIT_NS::TestFixture
+{
+    CPPUNIT_TEST_SUITE(DynamicArrayTest);
+    CPPUNIT_TEST(test_creation);
+    CPPUNIT_TEST(test_creation_capacity);
+    CPPUNIT_TEST(test_insertion);
+    CPPUNIT_TEST_SUITE_END();
+public:
+    void test_creation()
+    {
+        Array<uint32_t> arr;
+    }
+    void test_creation_capacity()
+    {
+        Array<uint32_t> arr(20);
+    }
+    void test_insertion()
+    {
+        Array<uint32_t> arr;
+        constexpr uint32_t size = 50;
+        for (uint32_t i = 0; i < size; ++i) {
+            arr.insert(i);
+        }
+        CPPUNIT_ASSERT_EQUAL(arr.size(), size);
+        for (uint32_t i = 0; i < size; ++i) {
+            CPPUNIT_ASSERT_EQUAL(arr[i], i);
+        }
+    }
+};
+
+CPPUNIT_TEST_SUITE_REGISTRATION( DynamicArrayTest );

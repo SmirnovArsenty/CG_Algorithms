@@ -7,3 +7,10 @@ set(SOURCES
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
+target_link_libraries(${PROJECT_NAME}
+    PRIVATE cppunit
+)
+link_directories(../third_party/cppunit/lib)
+target_include_directories(${PROJECT_NAME}
+    PRIVATE ../third_party/cppunit/include
+)
