@@ -1,3 +1,0 @@
-[submodule "third_party/cppunit"]
-	path = third_party/cppunit
-	url = https://github.com/Ultimaker/CppUnit.git
