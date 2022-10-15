@@ -86,7 +86,7 @@ public:
     }
     Array(uint32_t capacity)
     : capacity_{ capacity }
-    , size_{ other.size_ }
+    , size_{ 0 }
     {
         debug_log("Array(capacity:" + std::to_string(size_) + ")");
         data_ = static_cast<T*>(malloc(sizeof(T) * capacity_));
