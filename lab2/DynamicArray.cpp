@@ -97,6 +97,9 @@ public:
     ~Array()
     {
         debug_log("~Array()");
+        for (uint32_t i = 0; i < size_; ++i) {
+            static_cast<T*>(&data_[i])->~T();
+        }
         free(data_);
         data_ = nullptr;
         capacity_ = 0;
@@ -359,6 +362,25 @@ public:
             ++i;
         }
     }
+    void test_destructor_call()
+    {
+        bool is_removed1{ false }, is_removed2{ false };
+        class TestType {
+        private:
+            bool* is_removed_;
+            int32_t index_{ 0 };
+            std::string name_{};
+        public:
+            TestType(bool* is_removed) : is_removed_{ is_removed } {}
+            ~TestType() { *is_removed_ = true; }
+        } destructor_call_test_object1{ &is_removed1 }, destructor_call_test_object2{ &is_removed2 };
+        Array<TestType>* arr = new Array<TestType>(20);
+        arr->insert(destructor_call_test_object1);
+        arr->insert(destructor_call_test_object2);
+        delete arr;
+        CPPUNIT_ASSERT_EQUAL(true, is_removed1);
+        CPPUNIT_ASSERT_EQUAL(true, is_removed2);
+    }
 };
 
 int main()
@@ -378,6 +400,7 @@ int main()
         test_suite->addTest(new CppUnit::TestCaller<DynamicArrayTest>("reverse iterator loop", &DynamicArrayTest::test_reverse_iterator_loop));
         test_suite->addTest(new CppUnit::TestCaller<DynamicArrayTest>("range loop", &DynamicArrayTest::test_range_loop));
         test_suite->addTest(new CppUnit::TestCaller<DynamicArrayTest>("const range loop", &DynamicArrayTest::test_const_range_loop));
+        test_suite->addTest(new CppUnit::TestCaller<DynamicArrayTest>("destructor call on remove", &DynamicArrayTest::test_destructor_call));
     }
     bool is_errored{ false };
     class TestListener : public CppUnit::TestListener
