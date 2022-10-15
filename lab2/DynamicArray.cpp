@@ -2,13 +2,15 @@
 #include <iostream>
 #include <string>
 
-#include <cppunit/config/SourcePrefix.h>
+#include <cppunit/TestResult.h>
+#include <cppunit/TestListener.h>
+#include <cppunit/TestFailure.h>
 #include <cppunit/extensions/HelperMacros.h>
 
 void debug_log(const std::string& msg)
 {
 #ifndef _NDEBUG
-    std::cout << msg.c_str() << std::endl;
+    //std::cout << msg.c_str() << std::endl;
 #endif
 }
 
@@ -139,7 +141,7 @@ public:
 
     void remove(uint32_t index)
     {
-        debug_log("Array::remove(uint32_t index:" + std::to_string(index) + ")")
+        debug_log("Array::remove(uint32_t index:" + std::to_string(index) + ")");
         --size_; // decrement array size
         // move tail of array left from removed element's index
         for (uint32_t i = index; i < size_; ++i) { // index may be equal to zero, signed iterator needed
@@ -162,6 +164,13 @@ public:
     {
         debug_log("Array::size()");
         return size_;
+    }
+
+    // for tests only
+    [[nodiscard]] uint32_t capacity() const
+    {
+        debug_log("Array::capacity()");
+        return capacity_;
     }
 
     Iterator iterator()
@@ -191,7 +200,7 @@ public:
         debug_log("Array::begin()");
         return Iterator(data_, &data_[size_ - 1], data_);
     }
-    const Iterator cbegin() const
+    const Iterator begin() const
     {
         debug_log("Array::cbegin() const");
         return Iterator(data_, &data_[size_ - 1], data_);
@@ -202,66 +211,216 @@ public:
         debug_log("Array::end()");
         return Iterator(data_, &data_[size_ - 1], &data_[size_ - 1]);
     }
-    const Iterator cend() const
+    const Iterator end() const
     {
         debug_log("Array::cend() const");
         return Iterator(data_, &data_[size_ - 1], &data_[size_ - 1]);
     }
 };
 
-int main() {
-    Array<int16_t> arr;
-
-    arr.insert(2);
-    // insertion test
-    for (uint32_t i = 0; i < 30; ++i) {
-        arr.insert(i, i + 1);
-    }
-    // operator[] test
-    for (uint32_t i = 0; i < arr.size(); ++i) {
-        arr[i] *= 2;
-    }
-    // iterators test
-    for (auto it = arr.iterator(); it.has_next(); it.next()) {
-        std::cout << it.get() << std::endl;
-    }
-
-    // range-for test
-    for (auto it : arr) {
-        std::cout << it << std::endl;
-    }
-
-    return EXIT_SUCCESS;
-}
-
 class DynamicArrayTest : public CPPUNIT_NS::TestFixture
 {
-    CPPUNIT_TEST_SUITE(DynamicArrayTest);
-    CPPUNIT_TEST(test_creation);
-    CPPUNIT_TEST(test_creation_capacity);
-    CPPUNIT_TEST(test_insertion);
-    CPPUNIT_TEST_SUITE_END();
+    using TestArray = Array<uint32_t>;
+    using ConstTestArray = const Array<uint32_t>;
 public:
-    void test_creation()
+    void test_empty_creation()
     {
-        Array<uint32_t> arr;
+        TestArray arr;
+        CPPUNIT_ASSERT_EQUAL(true, arr.capacity() > 0);
     }
-    void test_creation_capacity()
+    void test_creation_with_capacity()
     {
-        Array<uint32_t> arr(20);
+        TestArray arr(20);
+        CPPUNIT_ASSERT_EQUAL(true, arr.capacity() >= 20);
     }
-    void test_insertion()
+    void test_access_operator()
     {
-        Array<uint32_t> arr;
-        constexpr uint32_t size = 50;
-        for (uint32_t i = 0; i < size; ++i) {
-            arr.insert(i);
+        TestArray arr;
+        arr.insert(0u);
+        CPPUNIT_ASSERT_EQUAL(0u, arr[0]);
+    }
+    void test_insert_at_the_end()
+    {
+        TestArray arr;
+        arr.insert(0u);
+        arr.insert(1u);
+        arr.insert(2u);
+        CPPUNIT_ASSERT_EQUAL(0u, arr[0]);
+        CPPUNIT_ASSERT_EQUAL(1u, arr[1]);
+        CPPUNIT_ASSERT_EQUAL(2u, arr[2]);
+    }
+    void test_insert_in_the_middle()
+    {
+        TestArray arr;
+        // insert some data
+        arr.insert(1u);
+        arr.insert(2u);
+        // insert new data in the middle
+        arr.insert(1, 0u);
+
+        CPPUNIT_ASSERT_EQUAL(1u, arr[0]);
+        CPPUNIT_ASSERT_EQUAL(0u, arr[1]);
+        CPPUNIT_ASSERT_EQUAL(2u, arr[2]);
+    }
+    void test_remove_from_the_end()
+    {
+        TestArray arr;
+        arr.insert(0u);
+        arr.insert(1u);
+        arr.insert(2u);
+        // remove last element
+        arr.remove(2);
+        CPPUNIT_ASSERT_EQUAL(true, arr.size() == 2);
+        CPPUNIT_ASSERT_EQUAL(0u, arr[0]);
+        CPPUNIT_ASSERT_EQUAL(1u, arr[1]);
+    }
+    void test_remove_from_the_middle()
+    {
+        TestArray arr;
+        arr.insert(0u);
+        arr.insert(1u);
+        arr.insert(2u);
+        // remove middle element
+        arr.remove(1);
+        CPPUNIT_ASSERT_EQUAL(true, arr.size() == 2);
+        CPPUNIT_ASSERT_EQUAL(0u, arr[0]);
+        CPPUNIT_ASSERT_EQUAL(2u, arr[1]);
+    }
+    void test_iterator()
+    {
+        TestArray arr;
+        arr.insert(0u);
+        arr.insert(1u);
+        arr.insert(2u);
+        auto iter = arr.iterator();
+        CPPUNIT_ASSERT_EQUAL(0u, iter.get());
+        iter.next();
+        CPPUNIT_ASSERT_EQUAL(1u, iter.get());
+        iter.next();
+        CPPUNIT_ASSERT_EQUAL(2u, iter.get());
+    }
+    void test_reverse_iterator()
+    {
+        TestArray arr;
+        arr.insert(0u);
+        arr.insert(1u);
+        arr.insert(2u);
+        auto iter = arr.reverseIterator();
+        CPPUNIT_ASSERT_EQUAL(2u, iter.get());
+        iter.next();
+        CPPUNIT_ASSERT_EQUAL(1u, iter.get());
+        iter.next();
+        CPPUNIT_ASSERT_EQUAL(0u, iter.get());
+    }
+    void test_iterator_loop()
+    {
+        TestArray arr;
+        arr.insert(0u);
+        arr.insert(1u);
+        arr.insert(2u);
+        auto iter = arr.iterator();
+        for (; iter.has_next(); iter.next());
+        CPPUNIT_ASSERT_EQUAL(2u, iter.get());
+    }
+    void test_reverse_iterator_loop()
+    {
+        TestArray arr;
+        arr.insert(0u);
+        arr.insert(1u);
+        arr.insert(2u);
+        auto iter = arr.reverseIterator();
+        for (; iter.has_next(); iter.next());
+        CPPUNIT_ASSERT_EQUAL(0u, iter.get());
+    }
+    void test_range_loop()
+    {
+        TestArray arr;
+        arr.insert(0u);
+        arr.insert(1u);
+        arr.insert(2u);
+        uint32_t i = 0u;
+        for (uint32_t& element : arr)
+        {
+            CPPUNIT_ASSERT_EQUAL(i, element);
+            ++i;
         }
-        CPPUNIT_ASSERT_EQUAL(arr.size(), size);
-        for (uint32_t i = 0; i < size; ++i) {
-            CPPUNIT_ASSERT_EQUAL(arr[i], i);
+    }
+    void test_const_range_loop()
+    {
+        TestArray arr;
+        arr.insert(0u);
+        arr.insert(1u);
+        arr.insert(2u);
+        ConstTestArray const_arr{ arr };
+        uint32_t i = 0u;
+        for (auto& element : const_arr)
+        {
+            CPPUNIT_ASSERT_EQUAL(i, element);
+            ++i;
         }
     }
 };
 
-CPPUNIT_TEST_SUITE_REGISTRATION( DynamicArrayTest );
+int main()
+{
+    CppUnit::TestSuite* test_suite = new CppUnit::TestSuite("DynamicArray TestSuite");
+    {
+        test_suite->addTest(new CppUnit::TestCaller<DynamicArrayTest>("create empty array", &DynamicArrayTest::test_empty_creation));
+        test_suite->addTest(new CppUnit::TestCaller<DynamicArrayTest>("create array with capacity", &DynamicArrayTest::test_creation_with_capacity));
+        test_suite->addTest(new CppUnit::TestCaller<DynamicArrayTest>("access operator", &DynamicArrayTest::test_access_operator));
+        test_suite->addTest(new CppUnit::TestCaller<DynamicArrayTest>("insert at the end", &DynamicArrayTest::test_insert_at_the_end));
+        test_suite->addTest(new CppUnit::TestCaller<DynamicArrayTest>("insert in the middle", &DynamicArrayTest::test_insert_in_the_middle));
+        test_suite->addTest(new CppUnit::TestCaller<DynamicArrayTest>("remove from the end", &DynamicArrayTest::test_remove_from_the_end));
+        test_suite->addTest(new CppUnit::TestCaller<DynamicArrayTest>("remove from the middle", &DynamicArrayTest::test_remove_from_the_middle));
+        test_suite->addTest(new CppUnit::TestCaller<DynamicArrayTest>("iterator", &DynamicArrayTest::test_iterator));
+        test_suite->addTest(new CppUnit::TestCaller<DynamicArrayTest>("reverse iterator", &DynamicArrayTest::test_reverse_iterator));
+        test_suite->addTest(new CppUnit::TestCaller<DynamicArrayTest>("iterator loop", &DynamicArrayTest::test_iterator_loop));
+        test_suite->addTest(new CppUnit::TestCaller<DynamicArrayTest>("reverse iterator loop", &DynamicArrayTest::test_reverse_iterator_loop));
+        test_suite->addTest(new CppUnit::TestCaller<DynamicArrayTest>("range loop", &DynamicArrayTest::test_range_loop));
+        test_suite->addTest(new CppUnit::TestCaller<DynamicArrayTest>("const range loop", &DynamicArrayTest::test_const_range_loop));
+    }
+    bool is_errored{ false };
+    class TestListener : public CppUnit::TestListener
+    {
+        bool* is_errored_ = nullptr;
+    public:
+        TestListener(bool* is_errored) : is_errored_{ is_errored } {
+        }
+        void addFailure(const CppUnit::TestFailure& failure) override
+        {
+            std::cerr << "ERROR\t\tTest failed: " << failure.failedTestName() << std::endl;
+            *is_errored_ = true;
+        }
+
+        void startTest(CppUnit::Test* test) override
+        {
+            std::cout << "\tStarting test: " << test->getName() << std::endl;
+        }
+        void endTest(CppUnit::Test* test) override
+        {
+            std::cout << "\tTest ended: " << test->getName() << std::endl;
+        }
+
+        void startSuite(CppUnit::Test* suite) override
+        {
+            std::cout << "Starting suite: " << suite->getName() << std::endl;
+        }
+
+        void endSuite(CppUnit::Test* suite) override
+        {
+            std::cout << "Suite ended: " << suite->getName() << std::endl;
+        }
+
+    } test_listener(&is_errored);
+    CppUnit::TestResult test_result;
+    test_result.addListener(&test_listener);
+    test_suite->run(&test_result);
+    if (is_errored) {
+        std::cerr << "\n\nSome fails occured while running tests\n\n" << std::endl;
+        return 1;
+    } else {
+        std::cout << "\n\nAll tests passed successfuly\n\n" << std::endl;
+    }
+
+    return EXIT_SUCCESS;
+}
