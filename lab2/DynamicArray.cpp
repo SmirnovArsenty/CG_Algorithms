@@ -211,9 +211,11 @@ public:
 
 int main() {
     Array<int16_t> arr;
+
+    arr.insert(2);
     // insertion test
     for (uint32_t i = 0; i < 30; ++i) {
-        arr.insert(i + 1);
+        arr.insert(i, i + 1);
     }
     // operator[] test
     for (uint32_t i = 0; i < arr.size(); ++i) {
