@@ -112,7 +112,10 @@ public:
     {
         debug_log("Array(const Array& other)");
         data_ = static_cast<T*>(malloc(sizeof(T) * capacity_));
-        memcpy(data_, other.data_, sizeof(T) * capacity_); // copy all data (by capacity_) to avoid memset(0)
+        // memcpy(data_, other.data_, sizeof(T) * capacity_); // copy all data (by capacity_) to avoid memset(0)
+        for (uint32_t i = 0; i < size_; ++i) {
+            static_cast<T>(data_[i]) = T(other.data_[i]);
+        }
     }
 
     uint32_t insert(const T& value) // push_back
@@ -124,10 +127,13 @@ public:
     {
         debug_log("Array::insert(uint32_t index:" + std::to_string(index) + ", const T& value)");
         ++size_; // increment array size
-        if (size_ > capacity_) { // reallocating data buffer if size more than capacity
+        if (size_ > capacity_) { // reallocating data buffer if size greater than capacity
             T* new_data = static_cast<T*>(malloc(sizeof(T) * capacity_ * capacity_scale_));
             memset(new_data, 0, sizeof(T) * capacity_ * capacity_scale_);
-            memcpy(new_data, data_, sizeof(T) * capacity_);
+            for (uint32_t i = 0; i < size_ - 1; ++i) {
+                new_data[i] = std::move(data_[i]);
+            }
+            //memcpy(new_data, data_, sizeof(T) * capacity_);
             free(data_);
             data_ = new_data;
             capacity_ *= capacity_scale_;
@@ -137,7 +143,7 @@ public:
             data_[i] = data_[i - 1];
         }
 
-        data_[index] = value;
+        data_[index] = T(value);
 
         return index;
     }
@@ -146,8 +152,10 @@ public:
     {
         debug_log("Array::remove(uint32_t index:" + std::to_string(index) + ")");
         --size_; // decrement array size
+        // call element destructor
+        static_cast<T*>(&data_[index])->~T();
         // move tail of array left from removed element's index
-        for (uint32_t i = index; i < size_; ++i) { // index may be equal to zero, signed iterator needed
+        for (uint32_t i = index; i < size_; ++i) {
             data_[i] = data_[i + 1];
         }
     }
@@ -163,7 +171,7 @@ public:
         return data_[index];
     }
 
-    uint32_t size() const
+    [[nodiscard]] uint32_t size() const
     {
         debug_log("Array::size()");
         return size_;
@@ -223,8 +231,29 @@ public:
 
 class DynamicArrayTest : public CPPUNIT_NS::TestFixture
 {
+private:
     using TestArray = Array<uint32_t>;
     using ConstTestArray = const Array<uint32_t>;
+
+    class TestType {
+    private:
+        bool* is_removed_;
+        bool is_copyed_{ false };
+        int32_t index_{ 0 };
+        std::string name_{};
+    public:
+        TestType(bool* is_removed) : is_removed_{ is_removed } {}
+        TestType(const TestType& other) : is_removed_{ other.is_removed_ }
+        {
+            const_cast<TestType*>(&other)->is_copyed_ = true; // avoid change is_removed flag from copyed instance
+        }
+        ~TestType()
+        {
+            if (!is_copyed_ && is_removed_ != nullptr) {
+                *is_removed_ = true;
+            }
+        }
+    };
 public:
     void test_empty_creation()
     {
@@ -234,7 +263,7 @@ public:
     void test_creation_with_capacity()
     {
         TestArray arr(20);
-        CPPUNIT_ASSERT_EQUAL(true, arr.capacity() >= 20);
+        CPPUNIT_ASSERT_EQUAL(true, arr.capacity() == 20);
     }
     void test_access_operator()
     {
@@ -342,8 +371,7 @@ public:
         arr.insert(1u);
         arr.insert(2u);
         uint32_t i = 0u;
-        for (uint32_t& element : arr)
-        {
+        for (uint32_t& element : arr) {
             CPPUNIT_ASSERT_EQUAL(i, element);
             ++i;
         }
@@ -356,8 +384,7 @@ public:
         arr.insert(2u);
         ConstTestArray const_arr{ arr };
         uint32_t i = 0u;
-        for (auto& element : const_arr)
-        {
+        for (auto& element : const_arr) {
             CPPUNIT_ASSERT_EQUAL(i, element);
             ++i;
         }
@@ -365,21 +392,23 @@ public:
     void test_destructor_call()
     {
         bool is_removed1{ false }, is_removed2{ false };
-        class TestType {
-        private:
-            bool* is_removed_;
-            int32_t index_{ 0 };
-            std::string name_{};
-        public:
-            TestType(bool* is_removed) : is_removed_{ is_removed } {}
-            ~TestType() { *is_removed_ = true; }
-        } destructor_call_test_object1{ &is_removed1 }, destructor_call_test_object2{ &is_removed2 };
+        TestType destructor_call_test_object1{ &is_removed1 }, destructor_call_test_object2{ &is_removed2 };
         Array<TestType>* arr = new Array<TestType>(20);
         arr->insert(destructor_call_test_object1);
         arr->insert(destructor_call_test_object2);
         delete arr;
         CPPUNIT_ASSERT_EQUAL(true, is_removed1);
         CPPUNIT_ASSERT_EQUAL(true, is_removed2);
+    }
+    void test_realloc()
+    {
+        Array<TestType> arr(2u);
+        arr.insert(TestType(nullptr));
+        arr.insert(TestType(nullptr));
+        CPPUNIT_ASSERT_EQUAL(2u, arr.capacity());
+        // realloc here
+        arr.insert(TestType(nullptr));
+        CPPUNIT_ASSERT(arr.capacity() > 2u);
     }
 };
 
@@ -401,6 +430,7 @@ int main()
         test_suite->addTest(new CppUnit::TestCaller<DynamicArrayTest>("range loop", &DynamicArrayTest::test_range_loop));
         test_suite->addTest(new CppUnit::TestCaller<DynamicArrayTest>("const range loop", &DynamicArrayTest::test_const_range_loop));
         test_suite->addTest(new CppUnit::TestCaller<DynamicArrayTest>("destructor call on remove", &DynamicArrayTest::test_destructor_call));
+        test_suite->addTest(new CppUnit::TestCaller<DynamicArrayTest>("realloc", &DynamicArrayTest::test_realloc));
     }
     bool is_errored{ false };
     class TestListener : public CppUnit::TestListener
