@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.8.0)
 
 project(CG_Algorithms CXX)
 
-add_subdirectory(third_party)
-
 add_subdirectory(lab1)
 add_subdirectory(lab2)
 add_subdirectory(lab3)
