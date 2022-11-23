@@ -111,7 +111,7 @@ public:
         data_ = static_cast<T*>(malloc(sizeof(T) * capacity_));
         // memcpy(data_, other.data_, sizeof(T) * capacity_); // copy all data (by capacity_) to avoid memset(0)
         for (uint32_t i = 0; i < size_; ++i) {
-            static_cast<T>(data_[i]) = T(other.data_[i]);
+            new(data_ + i) T(other.data_[i]);
         }
     }
 
@@ -137,10 +137,10 @@ public:
         }
         // move tail of array right from the last element
         for (int32_t i = size_ - 1; i > static_cast<int32_t>(index); --i) { // index may be equal to zero, signed iterator needed
-            data_[i] = data_[i - 1];
+            data_[i] = std::move(data_[i - 1]);
         }
 
-        data_[index] = T(value);
+        new(data_ + index) T(value);
 
         return index;
     }
@@ -153,7 +153,7 @@ public:
         static_cast<T*>(&data_[index])->~T();
         // move tail of array left from removed element's index
         for (uint32_t i = index; i < size_; ++i) {
-            data_[i] = data_[i + 1];
+            data_[i] = std::move(data_[i + 1]);
         }
     }
 

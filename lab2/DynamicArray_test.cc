@@ -4,13 +4,13 @@
 TEST(test_empty_creation, DynamicArray_tests)
 {
     Array<std::string> arr;
-    EXPECT_GT(arr.capacity(), 0);
+    EXPECT_GT(arr.capacity(), 0u);
 }
 
 TEST(test_creation_with_capacity, DynamicArray_tests)
 {
     Array<std::string> arr(20);
-    EXPECT_EQ(arr.capacity(), 20);
+    EXPECT_EQ(arr.capacity(), 20u);
 }
 
 TEST(test_access_operator, DynamicArray_tests)
