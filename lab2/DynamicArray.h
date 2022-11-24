@@ -20,8 +20,8 @@ class Array final {
 public:
     class Iterator final {
         T* cur_{ nullptr };
-        T* begin_{ nullptr }; // if begin_ greater than end_, it is reverse iterator
-        T* end_{ nullptr };
+        const T* begin_{ nullptr }; // if begin_ greater than end_, it is reverse iterator
+        const T* end_{ nullptr };
     public:
         Iterator(T* begin, T* end, T* cur)
             : begin_{ begin }
@@ -41,11 +41,14 @@ public:
             begin_ < end_ ? ++cur_ : --cur_;
         }
         bool has_next() const {
-            return begin_ < end_ ? cur_ < end_ : cur_ > end_;
+            return begin_ < end_ ? cur_ + 1 != end_ : cur_ - 1 != end_;
         }
 
         T& operator*() { return *cur_; }
         const T& operator*() const { return *cur_; }
+
+        operator T*() { return cur_; }
+        operator const T*() const { return cur_; }
 
         Iterator& operator++() // prefix ++
         {
@@ -87,9 +90,13 @@ public:
     : capacity_{ capacity }
     , size_{ 0 }
     {
-        debug_log("Array(capacity:" + std::to_string(size_) + ")");
-        data_ = static_cast<T*>(malloc(sizeof(T) * capacity_));
-        memset(data_, 0, sizeof(T) * capacity_);
+        debug_log("Array(capacity:" + std::to_string(capacity_) + ")");
+        if (capacity_ == 0) {
+            data_ = nullptr;
+        } else {
+            data_ = static_cast<T*>(malloc(sizeof(T) * capacity_));
+            memset(data_, 0, sizeof(T) * capacity_);
+        }
     }
     ~Array()
     {
@@ -195,33 +202,45 @@ public:
     Iterator reverseIterator()
     {
         debug_log("Array::reverseIterator()");
-        return Iterator(&data_[size_ - 1], data_, &data_[size_ - 1]);
+        return Iterator(data_ + size_ - 1, data_ - 1, data_ + size_ - 1);
     }
     const Iterator reverseIterator() const
     {
         debug_log("Array::reverseIterator() const");
-        return Iterator(&data_[size_ - 1], data_, &data_[size_ - 1]);
+        return Iterator(data_ + size_ - 1, data_ - 1, data_ + size_ - 1);
     }
 
     Iterator begin()
     {
         debug_log("Array::begin()");
-        return Iterator(data_, &data_[size_ - 1], data_);
+        if (size_ == 0) {
+            return Iterator(data_, data_, data_);
+        }
+        return Iterator(data_, data_ + size_, data_);
     }
     const Iterator begin() const
     {
         debug_log("Array::cbegin() const");
-        return Iterator(data_, &data_[size_ - 1], data_);
+        if (size_ == 0) {
+            return Iterator(data_, data_, data_);
+        }
+        return Iterator(data_, data_ + size_, data_);
     }
 
     Iterator end()
     {
         debug_log("Array::end()");
-        return Iterator(data_, &data_[size_ - 1], &data_[size_ - 1]);
+        if (size_ == 0) {
+            return Iterator(data_, data_, data_);
+        }
+        return Iterator(data_, data_ + size_, data_ + size_);
     }
     const Iterator end() const
     {
         debug_log("Array::cend() const");
-        return Iterator(data_, &data_[size_ - 1], &data_[size_ - 1]);
+        if (size_ == 0) {
+            return Iterator(data_, data_, data_);
+        }
+        return Iterator(data_, data_ + size_, data_ + size_);
     }
 };
