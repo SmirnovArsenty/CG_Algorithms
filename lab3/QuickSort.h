@@ -4,6 +4,8 @@
 #include <cassert>
 #include <cstdint>
 
+namespace {
+
 constexpr int32_t insert_sort_elements = (1 << 6); // 64
 
 template<typename T, typename Compare>
@@ -24,8 +26,11 @@ void insert_sort(T* first, T* last, Compare comp)
 }
 
 template<typename T, typename Compare>
-T* partition(T* first, T* last, Compare comp)
+T* median(T* first, T* last, Compare comp)
 {
+    // sort between first, last and median
+    // return median pointer
+
     T* mid = first + (last - first) / 2;
     if (comp(*mid, *first)) {
         std::swap(*mid, *first);
@@ -40,10 +45,16 @@ T* partition(T* first, T* last, Compare comp)
     return mid;
 }
 
+}
+
 template<typename T, typename Compare>
 void QuickSort(T* first, T* last, Compare comp)
 {
     if (last < first) {
+        throw std::runtime_error("invalid input data");
+    }
+
+    if (!first || !last) {
         throw std::runtime_error("invalid input data");
     }
 
@@ -53,23 +64,24 @@ void QuickSort(T* first, T* last, Compare comp)
             return insert_sort(first, last, comp);
         }
 
-        T* mid = partition(first, last, comp);
+        T* mid = median(first, last, comp);
 
         std::swap(*mid, *(last - 1));
         auto pivot = *(last - 1);
 
-        T* i = first;
-        T* j = last - 1;
+        T* i = first; // first is less than pivot after median() call
+        T* j = last - 1; // last is greater than pivot after median() call
 
         while (true) {
-            while (comp(*(++i), pivot));
-            while (comp(pivot, *(--j)));
+            while (comp(*(i), pivot)) {
+                ++i;
+            }
+            while (comp(pivot, *(--j))); // skip last - 1 (it is pivot)
             if (i >= j) break;
 
             std::swap(*(i), *(j));
         }
         std::swap(*(last - 1), *(i));
-        *(i) = pivot;
 
         if (i - first < last - i) {
             QuickSort(first, i, comp);

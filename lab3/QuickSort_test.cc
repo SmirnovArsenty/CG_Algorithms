@@ -18,12 +18,6 @@ bool is_sorted(T* first, T* last, Compare comp) {
 
 auto int_comp = [](const int32_t& a, const int32_t& b) -> bool { return a < b; };
 
-TEST(sort_empty_array, QuickSortTesting)
-{
-    QuickSort((int32_t*)nullptr, (int32_t*)nullptr + 1, int_comp);
-    EXPECT_TRUE(is_sorted((int32_t*)nullptr, (int32_t*)nullptr + 1, int_comp));
-}
-
 TEST(sort_one_element_array, QuickSortTesting)
 {
     int32_t arr[1]{};
@@ -40,8 +34,8 @@ TEST(sort_two_elements_array, QuickSortTesting)
 
 TEST(sort_sorted_array, QuickSortTesting)
 {
-    int32_t arr[test_elements_count];
-    for (int32_t i = 0; i < test_elements_count; ++i) {
+    int32_t arr[10];
+    for (int32_t i = 0; i < 10; ++i) {
         arr[i] = i;
     }
     QuickSort(arr, arr + sizeof(arr) / sizeof(arr[0]), int_comp);
@@ -50,9 +44,9 @@ TEST(sort_sorted_array, QuickSortTesting)
 
 TEST(sort_reverse_sorted_array, QuickSortTesting)
 {
-    int32_t arr[test_elements_count];
-    for (int32_t i = 0; i < test_elements_count; ++i) {
-        arr[i] = test_elements_count - i;
+    int32_t arr[10];
+    for (int32_t i = 0; i < 10; ++i) {
+        arr[i] = 10 - i;
     }
     QuickSort(arr, arr + sizeof(arr) / sizeof(arr[0]), int_comp);
     EXPECT_TRUE(is_sorted(arr, arr + sizeof(arr) / sizeof(arr[0]), int_comp));
@@ -76,6 +70,29 @@ TEST(sort_equal_array, QuickSortTesting)
     }
     QuickSort(arr, arr + sizeof(arr) / sizeof(arr[0]), int_comp);
     EXPECT_TRUE(is_sorted(arr, arr + sizeof(arr) / sizeof(arr[0]), [](int32_t a, int32_t b) -> bool { return a < b; }));
+}
+
+TEST(sort_lot_of_median_array, QuickSortTesting)
+{
+    int32_t arr[10];
+    for (int32_t i = 0; i < 3; ++i) {
+        arr[i] = i;
+    }
+    for (int32_t i = 3; i < 7; ++i) {
+        arr[i] = 5;
+    }
+    for (int32_t i = 7; i < 10; ++i) {
+        arr[i] = i;
+    }
+    QuickSort(arr, arr + sizeof(arr) / sizeof(arr[0]), int_comp);
+    EXPECT_TRUE(is_sorted(arr, arr + sizeof(arr) / sizeof(arr[0]), [](int32_t a, int32_t b) -> bool { return a < b; }));
+}
+
+TEST(sort_empty_dynamic_array, QuickSortTesting)
+{
+    Array<int32_t> arr;
+    QuickSort((int32_t*)arr.begin(), (int32_t*)arr.end(), int_comp);
+    EXPECT_TRUE(is_sorted((int32_t*)arr.begin(), (int32_t*)arr.end(), int_comp));
 }
 
 TEST(sort_random_filled_dynamic_array, QuickSortTesting)
