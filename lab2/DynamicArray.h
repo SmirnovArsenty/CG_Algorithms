@@ -135,7 +135,7 @@ public:
             T* new_data = static_cast<T*>(malloc(sizeof(T) * capacity_ * capacity_scale_));
             for (uint32_t i = 0; i < size_ - 1; ++i) {
                 new(new_data + i) T(data_[i]);
-                static_cast<T*>(&data_[i])->~T();
+                data_[i].~T();
             }
             free(data_);
             data_ = new_data;

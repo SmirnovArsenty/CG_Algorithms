@@ -42,14 +42,20 @@ TEST(sort_sorted_array, QuickSortTesting)
     EXPECT_TRUE(is_sorted(arr, arr + sizeof(arr) / sizeof(arr[0]), int_comp));
 }
 
+//#include <Windows.h>
 TEST(sort_reverse_sorted_array, QuickSortTesting)
 {
-    int32_t arr[10];
-    for (int32_t i = 0; i < 10; ++i) {
-        arr[i] = 10 - i;
+    //auto now = std::chrono::high_resolution_clock::now();
+
+    int32_t arr[test_elements_count];
+    for (int32_t i = 0; i < test_elements_count; ++i) {
+        arr[i] = test_elements_count - i;
     }
+    //insert_sort(arr, arr + sizeof(arr) / sizeof(arr[0]) - 1, int_comp);
     QuickSort(arr, arr + sizeof(arr) / sizeof(arr[0]), int_comp);
     EXPECT_TRUE(is_sorted(arr, arr + sizeof(arr) / sizeof(arr[0]), int_comp));
+
+    //OutputDebugStringA(("Insertion sort time (" + std::to_string(test_elements_count) + "): " + std::to_string((std::chrono::high_resolution_clock::now() - now).count()) + "ns\n").c_str());
 }
 
 TEST(sort_random_filled_array, QuickSortTesting)

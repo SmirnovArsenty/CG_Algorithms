@@ -6,7 +6,7 @@
 
 namespace {
 
-constexpr int32_t insert_sort_elements = (1 << 6); // 64
+constexpr int32_t insert_sort_elements = 32;
 
 template<typename T, typename Compare>
 void insert_sort(T* first, T* last, Compare comp)
