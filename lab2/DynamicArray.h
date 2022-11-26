@@ -84,7 +84,7 @@ public:
     {
         debug_log("Array()");
         data_ = static_cast<T*>(malloc(sizeof(T) * capacity_));
-        memset(data_, 0, sizeof(T) * capacity_);
+        //memset(data_, 0, sizeof(T) * capacity_);
     }
     Array(uint32_t capacity)
     : capacity_{ capacity }
@@ -95,7 +95,7 @@ public:
             data_ = nullptr;
         } else {
             data_ = static_cast<T*>(malloc(sizeof(T) * capacity_));
-            memset(data_, 0, sizeof(T) * capacity_);
+            //memset(data_, 0, sizeof(T) * capacity_);
         }
     }
     ~Array()
@@ -133,18 +133,18 @@ public:
         ++size_; // increment array size
         if (size_ > capacity_) { // reallocating data buffer if size greater than capacity
             T* new_data = static_cast<T*>(malloc(sizeof(T) * capacity_ * capacity_scale_));
-            memset(new_data, 0, sizeof(T) * capacity_ * capacity_scale_);
             for (uint32_t i = 0; i < size_ - 1; ++i) {
-                new_data[i] = std::move(data_[i]);
+                new(new_data + i) T(data_[i]);
+                static_cast<T*>(&data_[i])->~T();
             }
-            //memcpy(new_data, data_, sizeof(T) * capacity_);
             free(data_);
             data_ = new_data;
             capacity_ *= capacity_scale_;
         }
         // move tail of array right from the last element
         for (int32_t i = size_ - 1; i > static_cast<int32_t>(index); --i) { // index may be equal to zero, signed iterator needed
-            data_[i] = std::move(data_[i - 1]);
+            new(data_ + i) T(data_[i - 1]);
+            static_cast<T*>(&data_[i - 1])->~T();
         }
 
         new(data_ + index) T(value);
@@ -160,7 +160,8 @@ public:
         static_cast<T*>(&data_[index])->~T();
         // move tail of array left from removed element's index
         for (uint32_t i = index; i < size_; ++i) {
-            data_[i] = std::move(data_[i + 1]);
+            new(data_ + i) T(data_[i + 1]);
+            static_cast<T*>(&data_[i + 1])->~T();
         }
     }
 
