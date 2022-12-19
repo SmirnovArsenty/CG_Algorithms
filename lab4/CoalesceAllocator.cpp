@@ -45,7 +45,7 @@ void* CoalescePage::alloc(size_t size)
     // right bloc is still free to alloc
     // left returned as the result of alloc
     CoalesceBlockHeader* right_block = (CoalesceBlockHeader*)((char*)fit_block + sizeof(CoalesceBlockHeader) + size);
-    right_block->size = fit_block->size - size;
+    right_block->size = fit_block->size - (size + sizeof(CoalesceBlockHeader));
     right_block->next_free_block = fit_block->next_free_block;
     right_block->prev_free_block = fit_block->prev_free_block;
     if (right_block->next_free_block != nullptr) {
@@ -86,6 +86,8 @@ bool CoalescePage::free(void* p)
         block = (CoalesceBlockHeader*)(char*)block + block->size;
     }
 
+    CoalesceBlockHeader* next_block = (CoalesceBlockHeader*)((char*)block + block->size + sizeof(CoalesceBlockHeader));
+
     // attach freed block to free-list
     if (prev_free_block == nullptr) // become first_free_block
     {
@@ -104,7 +106,34 @@ bool CoalescePage::free(void* p)
             prev_free_block->next_free_block->prev_free_block = block;
         }
         prev_free_block->next_free_block = block;
-        
+    }
+
+    if (prev_free_block != nullptr && (char*)prev_free_block + prev_free_block->size == (char*)block)
+    {
+        prev_free_block->size += block->size + sizeof(CoalesceBlockHeader);
+        prev_free_block->next_free_block = block->next_free_block;
+        if (block->next_free_block != nullptr) {
+            block->next_free_block->prev_free_block = prev_free_block;
+        }
+        block->next_free_block = nullptr;
+        block->prev_free_block = nullptr;
+        block->size = 0;
+        block->self = nullptr;
+        block = prev_free_block;
+    }
+    if ((char*)next_block < (char*)this + coalesce_page_size + sizeof(CoalescePageHeader) &&
+        next_block->next_free_block != nullptr && next_block->prev_free_block != nullptr)
+    {
+        block->size += next_block->size + sizeof(CoalesceBlockHeader);
+        if (next_block->next_free_block != nullptr) {
+            next_block->next_free_block->prev_free_block = block;
+        }
+        block->next_free_block = next_block->next_free_block;
+
+        next_block->next_free_block = nullptr;
+        next_block->prev_free_block = nullptr;
+        next_block->size = 0;
+        next_block->self = nullptr;
     }
 
     return true;
