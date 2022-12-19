@@ -37,4 +37,9 @@ public:
 private:
     uint16_t block_size_;
     FSAPage* page_;
+
+#ifndef NDEBUG
+    uint32_t alloc_count_{ 0 };
+    uint32_t free_count_{ 0 };
+#endif
 };

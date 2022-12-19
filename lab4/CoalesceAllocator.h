@@ -5,6 +5,7 @@ constexpr uint32_t coalesce_page_size = 10000000;
 
 struct CoalesceBlockHeader
 {
+    void* self;
     CoalesceBlockHeader* next_free_block;
     CoalesceBlockHeader* prev_free_block;
     uint32_t size;
@@ -24,7 +25,7 @@ public:
     bool free(void* p);
 private:
     CoalescePageHeader header_;
-    CoalesceBlockHeader* free_block_;
+    CoalesceBlockHeader* first_free_block_;
 };
 
 class CoalesceAllocator
@@ -45,4 +46,9 @@ public:
 #endif
 private:
     CoalescePage* page_;
+
+#ifndef NDEBUG
+    uint32_t alloc_count_{ 0 };
+    uint32_t free_count_{ 0 };
+#endif
 };

@@ -4,6 +4,7 @@
 #include "FixedSizeAllocator.h"
 
 #include <mutex>
+#include <vector>
 
 class MemoryAllocator
 {
@@ -17,7 +18,10 @@ public:
     virtual void* alloc(size_t size);
     virtual void free(void* p);
 
-#ifndef NDEBUG
+#ifdef NDEBUG
+    virtual void dumpStat() const {};
+    virtual void dumpBlocks() const {};
+#else
     virtual void dumpStat() const;
     virtual void dumpBlocks() const;
 #endif
@@ -30,6 +34,13 @@ private:
     FixedSizeAllocator fsa512;
 
     CoalesceAllocator coalesce;
+
+    struct NativeBlock
+    {
+        size_t size;
+        void* buffer;
+    };
+    std::vector<NativeBlock> native_blocks_;
 
     std::mutex mutex_;
 };

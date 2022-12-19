@@ -1,14 +1,16 @@
 #include <Windows.h>
+#include <iostream>
+#include <cassert>
 
 #include "CoalesceAllocator.h"
 
 void CoalescePage::init()
 {
     header_.next_page = nullptr;
-    free_block_ = (CoalesceBlockHeader*)((char*)this + sizeof(CoalescePageHeader));
-    free_block_->next_free_block = free_block_;
-    free_block_->prev_free_block = free_block_;
-    free_block_->size = coalesce_page_size;
+    first_free_block_ = (CoalesceBlockHeader*)((char*)this + sizeof(CoalescePageHeader));
+    first_free_block_->next_free_block = nullptr;
+    first_free_block_->prev_free_block = nullptr;
+    first_free_block_->size = coalesce_page_size;
 }
 
 void CoalescePage::destroy()
@@ -22,14 +24,14 @@ void CoalescePage::destroy()
 
 void* CoalescePage::alloc(size_t size)
 {
-    CoalesceBlockHeader* fit_block = free_block_;
+    CoalesceBlockHeader* fit_block = first_free_block_;
 
     // try to find fit block by size
-    while (fit_block->size < size && fit_block->next_free_block != free_block_) {
+    while (fit_block->size < size && fit_block != nullptr) {
         fit_block = fit_block->next_free_block;
     }
 
-    if (fit_block->size < size) { // fit block not found, go to next page
+    if (fit_block == nullptr) { // fit block not found, go to next page
         if (header_.next_page == nullptr) { // alloc new page
             CoalescePage* page = (CoalescePage*)VirtualAlloc(NULL, coalesce_page_size + sizeof(CoalescePageHeader), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
             page->init();
@@ -44,11 +46,16 @@ void* CoalescePage::alloc(size_t size)
     // left returned as the result of alloc
     CoalesceBlockHeader* right_block = (CoalesceBlockHeader*)((char*)fit_block + sizeof(CoalesceBlockHeader) + size);
     right_block->size = fit_block->size - size;
-    right_block->next_free_block = free_block_->next_free_block;
+    right_block->next_free_block = fit_block->next_free_block;
     right_block->prev_free_block = fit_block->prev_free_block;
-    right_block->next_free_block->prev_free_block = right_block;
-    right_block->prev_free_block->next_free_block = right_block;
-    free_block_ = right_block;
+    if (right_block->next_free_block != nullptr) {
+        right_block->next_free_block->prev_free_block = right_block;
+    }
+    if (right_block->prev_free_block != nullptr) {
+        right_block->prev_free_block->next_free_block = right_block;
+    } else {
+        first_free_block_ = right_block;
+    }
 
     // assign size
     fit_block->size = size;
@@ -71,15 +78,34 @@ bool CoalescePage::free(void* p)
     }
 
     CoalesceBlockHeader* block = (CoalesceBlockHeader*)((char*)this + sizeof(CoalescePageHeader));
+    CoalesceBlockHeader* prev_free_block = nullptr;
     while (p != (char*)block + sizeof(CoalesceBlockHeader)) {
+        if (block->next_free_block != nullptr || block->prev_free_block != nullptr || block == first_free_block_) {
+            prev_free_block = block;
+        }
         block = (CoalesceBlockHeader*)(char*)block + block->size;
     }
 
     // attach freed block to free-list
-    block->next_free_block = free_block_->next_free_block;
-    block->prev_free_block = free_block_;
-    free_block_->next_free_block->prev_free_block = block;
-    free_block_->next_free_block = block;
+    if (prev_free_block == nullptr) // become first_free_block
+    {
+        block->next_free_block = first_free_block_;
+        block->prev_free_block = nullptr;
+
+        assert(first_free_block_->prev_free_block == nullptr);
+        first_free_block_->prev_free_block = block;
+
+        first_free_block_ = block;
+    } else {
+        block->prev_free_block = prev_free_block;
+        block->next_free_block = prev_free_block->next_free_block;
+
+        if (prev_free_block->next_free_block != nullptr) {
+            prev_free_block->next_free_block->prev_free_block = block;
+        }
+        prev_free_block->next_free_block = block;
+        
+    }
 
     return true;
 }
@@ -102,21 +128,72 @@ void CoalesceAllocator::destroy()
 
 void* CoalesceAllocator::alloc(size_t size)
 {
+#ifndef NDEBUG
+    ++alloc_count_;
+#endif
     return page_->alloc(size);
 }
 
 bool CoalesceAllocator::free(void* p)
 {
+#ifndef NDEBUG
+    ++free_count_;
+#endif
     return page_->free(p);
 }
 
 #ifndef NDEBUG
 void CoalesceAllocator::dumpStat() const
 {
+    uint32_t busy_blocks = 0;
+    uint32_t free_blocks = 0;
+    uint32_t page_count = 0;
 
+    CoalescePage* page = page_;
+    while (page != nullptr) {
+        ++page_count;
+        CoalesceBlockHeader* block = (CoalesceBlockHeader*)((char*)page + sizeof(CoalescePageHeader));
+        while ((char*)block < (char*)page + sizeof(CoalescePageHeader) + coalesce_page_size) {
+            if (block->next_free_block == nullptr) {
+                ++busy_blocks;
+            } else {
+                ++free_blocks;
+            }
+            block = (CoalesceBlockHeader*)((char*)block + block->size);
+        }
+
+        CoalescePageHeader page_header = *((CoalescePageHeader*)page);
+        page = page_header.next_page;
+    }
+
+    std::cout << "\tUsed blocks: " << busy_blocks << std::endl;
+    std::cout << "\tFree blocks: " << free_blocks << std::endl;
+
+
+    // OS allocated blocks
+    std::cout << "\tOS allocated pages: " << page_count << " (" << page_count * (coalesce_page_size + sizeof(CoalescePageHeader)) << " bytes)" << std::endl;
+    
+    // memory returned to user
+    std::cout << "\tAlloc count: " << alloc_count_ << std::endl;
+    std::cout << "\tFree count: " << free_count_ << std::endl;
 }
 void CoalesceAllocator::dumpBlocks() const
 {
+    CoalescePage* page = page_;
+    while (page != nullptr) {
+        CoalesceBlockHeader* block = (CoalesceBlockHeader*)((char*)page + sizeof(CoalescePageHeader));
+        while ((char*)block < (char*)page + sizeof(CoalescePageHeader) + coalesce_page_size) {
+            if (block->next_free_block == nullptr) {
+                std::cout << "Allocated block:" << std::endl;
+                std::cout << "\taddress: " << (void*)block << std::endl;
+                std::cout << "\tsize: " << block->size << std::endl;
+                std::cout << std::endl;
+            }
+            block = (CoalesceBlockHeader*)((char*)block + block->size);
+        }
 
+        CoalescePageHeader page_header = *((CoalescePageHeader*)page);
+        page = page_header.next_page;
+    }
 }
 #endif
